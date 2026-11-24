@@ -87,7 +87,7 @@ standard_fds вивела 0, 1, 2.
 
 ls -l /proc/PID/fd для fd_observer:
 
-| fd | Запуск зі скрипта | Запуск у терміналі (script) |
+| fd | Запуск з виводом у файл | Запуск у терміналі |
 |---|---|---|
 | 0 | /dev/null | /dev/null |
 | 1 | файл fo.log | /dev/pts/0 |
