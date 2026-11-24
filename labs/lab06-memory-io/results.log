@@ -1,0 +1,328 @@
+
+$ uname -srm
+Linux 7.0.12-linuxkit aarch64
+
+$ getconf PAGE_SIZE
+4096
+### 1 layout
+
+$ ./memory_layout
+function:             0x400744
+global initialized:   0x420048
+global uninitialized: 0x420054
+static:               0x42004c
+heap:                 0x1df462a0
+stack:                0xfffffbd78f44
+
+$ ./memory_layout
+function:             0x400744
+global initialized:   0x420048
+global uninitialized: 0x420054
+static:               0x42004c
+heap:                 0x2630e2a0
+stack:                0xffffdca526c4
+
+$ ./memory_layout
+function:             0x400744
+global initialized:   0x420048
+global uninitialized: 0x420054
+static:               0x42004c
+heap:                 0x38cb12a0
+stack:                0xffffc17710f4
+### 2 maps
+
+$ cat mm.log
+PID:    95
+main:   0x400884
+global: 0x420060
+heap:   0x269ec2a0
+stack:  0xffffde5b1fa4
+
+$ cat /proc/95/maps
+00400000-00401000 r-xp 00000000 00:2b 11                                 /lab/out/memory_maps
+0041f000-00420000 r--p 0000f000 00:2b 11                                 /lab/out/memory_maps
+00420000-00421000 rw-p 00010000 00:2b 11                                 /lab/out/memory_maps
+269ec000-26a0d000 rw-p 00000000 00:00 0                                  [heap]
+ffff996e0000-ffff9986c000 r-xp 00000000 00:35 268340                     /usr/lib/aarch64-linux-gnu/libc.so.6
+ffff9986c000-ffff9987c000 ---p 0018c000 00:35 268340                     /usr/lib/aarch64-linux-gnu/libc.so.6
+ffff9987c000-ffff99880000 r--p 0018c000 00:35 268340                     /usr/lib/aarch64-linux-gnu/libc.so.6
+ffff99880000-ffff99882000 rw-p 00190000 00:35 268340                     /usr/lib/aarch64-linux-gnu/libc.so.6
+ffff99882000-ffff9988f000 rw-p 00000000 00:00 0 
+ffff99890000-ffff99891000 r-xp 00000000 00:35 269343                     /usr/libexec/coreutils/libstdbuf.so
+ffff99891000-ffff998af000 ---p 00001000 00:35 269343                     /usr/libexec/coreutils/libstdbuf.so
+ffff998af000-ffff998b0000 r--p 0000f000 00:35 269343                     /usr/libexec/coreutils/libstdbuf.so
+ffff998b0000-ffff998b1000 rw-p 00010000 00:35 269343                     /usr/libexec/coreutils/libstdbuf.so
+ffff998b8000-ffff998df000 r-xp 00000000 00:35 268322                     /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+ffff998e5000-ffff998e7000 rw-p 00000000 00:00 0 
+ffff998ee000-ffff998f0000 rw-p 00000000 00:00 0 
+ffff998f0000-ffff998f4000 r--p 00000000 00:00 0                          [vvar]
+ffff998f4000-ffff998f6000 r-xp 00000000 00:00 0                          [vdso]
+ffff998f6000-ffff998f8000 r--p 0002e000 00:35 268322                     /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+ffff998f8000-ffff998fa000 rw-p 00030000 00:35 268322                     /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+ffffde592000-ffffde5b3000 rw-p 00000000 00:00 0                          [stack]
+### 3 page
+
+$ ./page_size
+Page size: 4096 bytes
+### 4 heap growth
+
+$ cat hg.log
+PID: 102
+Allocated 104857600 bytes
+Address: 0xffff97b8f010
+Press Enter to touch memory...
+
+$ grep -E '^(VmSize|VmRSS|RssAnon)' /proc/102/status
+VmSize:	  104748 kB
+VmRSS:	    1296 kB
+RssAnon:	     116 kB
+
+$ grep -B1 -A3 "^$(printf '%x' 0)" /dev/null; awk '$6=="" && $2 ~ /rw/' /proc/102/maps | head -5
+ffff97b8f000-ffff9df90000 rw-p 00000000 00:00 0 
+ffff9e132000-ffff9e13f000 rw-p 00000000 00:00 0 
+ffff9e199000-ffff9e19b000 rw-p 00000000 00:00 0 
+ffff9e1a2000-ffff9e1a4000 rw-p 00000000 00:00 0 
+
+$ cat hg.log
+PID: 102
+Allocated 104857600 bytes
+Address: 0xffff97b8f010
+Press Enter to touch memory...
+Memory touched. Press Enter to exit...
+
+$ grep -E '^(VmSize|VmRSS|RssAnon)' /proc/102/status
+VmSize:	  104748 kB
+VmRSS:	  103692 kB
+RssAnon:	  102512 kB
+### 5 invalid
+
+$ ./invalid_memory; echo "exit status: $?"
+About to access invalid memory
+./run.sh: line 5:   113 Segmentation fault      ./invalid_memory
+exit status: 139
+
+$ strace ./invalid_memory 2>&1 | tail -6
+brk(NULL)                               = 0x23c3f000
+brk(0x23c60000)                         = 0x23c60000
+write(1, "About to access invalid memory\n", 31About to access invalid memory
+) = 31
+--- SIGSEGV {si_signo=SIGSEGV, si_code=SEGV_MAPERR, si_addr=NULL} ---
++++ killed by SIGSEGV +++
+### 7 fds
+
+$ ./standard_fds
+STDIN  = 0
+STDOUT = 1
+STDERR = 2
+
+$ cat fo.log
+PID: 120
+
+$ ls -l /proc/120/fd
+total 0
+lr-x------ 1 root root 64 Nov 24 10:05 0 -> /dev/null
+l-wx------ 1 root root 64 Nov 24 10:05 1 -> /lab/out/fo.log
+l-wx------ 1 root root 64 Nov 24 10:05 2 -> pipe:[6213]
+
+$ (у pseudo-terminal) ls -l /proc/PID/fd
+PID: 126
+total 0
+lr-x------ 1 root root 64 Nov 24 10:05 0 -> /dev/null
+lrwx------ 1 root root 64 Nov 24 10:05 1 -> /dev/pts/0
+lrwx------ 1 root root 64 Nov 24 10:05 2 -> /dev/pts/0
+### 8 open
+
+$ cat of.log
+Opened file descriptor: 3
+
+$ ls -l /proc/131/fd
+total 0
+lr-x------ 1 root root 64 Nov 24 10:05 0 -> /dev/null
+l-wx------ 1 root root 64 Nov 24 10:05 1 -> /lab/out/of.log
+l-wx------ 1 root root 64 Nov 24 10:05 2 -> pipe:[6213]
+l-wx------ 1 root root 64 Nov 24 10:05 3 -> /lab/out/example.txt
+### 9 write
+
+$ ./write_file
+Requested: 19 bytes
+Written:   19 bytes
+
+$ cat output.txt
+Hello from write()
+
+$ od -c output.txt | head -3
+0000000   H   e   l   l   o       f   r   o   m       w   r   i   t   e
+0000020   (   )  \n
+0000023
+### 10 read
+
+$ ./read_file
+Computer Systems
+Operating Systems
+
+$ wc -c input.txt
+35 input.txt
+### 11-12 offset
+
+$ ./file_offset
+First:  [Compu]
+Second: [ter S]
+
+$ ./file_offset_lseek
+First:  [Compu]
+Second: [Compu]
+### 13 strace read
+
+$ strace -e trace=openat,read,write,close ./read_file
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+close(3)                                = 0
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0\267\0\1\0\0\0000y\2\0\0\0\0\0"..., 832) = 832
+close(3)                                = 0
+openat(AT_FDCWD, "input.txt", O_RDONLY) = 3
+read(3, "Computer Systems", 16)         = 16
+write(1, "Computer Systems", 16Computer Systems)        = 16
+read(3, "\nOperating Syste", 16)        = 16
+write(1, "\nOperating Syste", 16
+Operating Syste)       = 16
+read(3, "ms\n", 16)                     = 3
+write(1, "ms\n", 3ms
+)                     = 3
+read(3, "", 16)                         = 0
+close(3)                                = 0
++++ exited with 0 +++
+### 14 streams
+
+$ ./streams
+Normal output
+Error output
+
+$ ./streams > normal.txt
+Error output
+
+$ cat normal.txt
+Normal output
+
+$ ./streams 2> errors.txt
+Normal output
+
+$ cat errors.txt
+Error output
+
+$ strace -e trace=write ./streams > normal.txt
+write(1, "Normal output\n", 14)         = 14
+write(2, "Error output\n", 13Error output
+)          = 13
++++ exited with 0 +++
+### 15-16 buffering
+
+$ ./buffering; echo
+DABC
+
+$ strace -e write ./buffering; echo
+write(1, "D", 1D)                        = 1
+write(1, "ABC", 3ABC)                      = 3
++++ exited with 0 +++
+
+
+$ script -qc 'strace -e write ./buffering' /dev/null | tr -d '\r'; echo
+write(1, "D", 1D)                        = 1
+write(1, "ABC", 3ABC)                      = 3
++++ exited with 0 +++
+
+
+$ ./buffering_fflush; echo
+ABCD
+
+$ strace -e write ./buffering_fflush; echo
+write(1, "ABC", 3ABC)                      = 3
+write(1, "D", 1D)                        = 1
++++ exited with 0 +++
+
+### final file_copy
+
+$ ./file_copy source.txt destination.txt
+
+$ cmp source.txt destination.txt; echo "cmp status: $?"
+cmp status: 0
+
+$ cat destination.txt
+Operating Systems
+Computer Architecture
+
+$ ./file_copy file_copy copy_of_file_copy
+
+$ cmp file_copy copy_of_file_copy; echo "cmp status: $?"
+cmp status: 0
+
+$ ls -l file_copy copy_of_file_copy
+-rw-r--r-- 1 root root 70912 Nov 24 10:05 copy_of_file_copy
+-rwxr-xr-x 1 root root 70912 Nov 24 10:05 file_copy
+
+$ ./file_copy random.bin random_copy.bin
+
+$ cmp random.bin random_copy.bin; echo "cmp status: $?"; sha256sum random.bin random_copy.bin
+cmp status: 0
+b7e4234fbadd132ef3cba7485bc61fdd41271ced7d6dd93c3471f73cf272ba43  random.bin
+b7e4234fbadd132ef3cba7485bc61fdd41271ced7d6dd93c3471f73cf272ba43  random_copy.bin
+
+$ strace -c -e trace=read,write ./file_copy random.bin random_copy.bin 2>&1 | tail -6
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+ 62.55    0.033920          13      2442           write
+ 37.45    0.020307           8      2444           read
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.054227          11      4886           total
+
+$ ./file_copy empty.txt empty_copy.txt
+
+$ cmp empty.txt empty_copy.txt; echo "cmp status: $?"
+cmp status: 0
+--- errors
+
+$ ./file_copy; echo "exit: $?"
+Usage: ./file_copy <source> <destination>
+exit: 1
+
+$ ./file_copy only_one; echo "exit: $?"
+Usage: ./file_copy <source> <destination>
+exit: 1
+
+$ ./file_copy nosuchfile.txt x.txt; echo "exit: $?"
+open source 'nosuchfile.txt': No such file or directory
+exit: 1
+
+$ ./file_copy source.txt /nonexistent_dir/x.txt; echo "exit: $?"
+open destination '/nonexistent_dir/x.txt': No such file or directory
+exit: 1
+
+$ ./file_copy . x.txt; echo "exit: $?"
+read: Is a directory
+exit: 1
+
+$ ./file_copy source.txt /dev/full; echo "exit: $?"
+write: No space left on device
+exit: 1
+
+$ strace -e trace=openat,close ./file_copy source.txt /nonexistent_dir/x.txt 2>&1 | grep -v 'ld.so\|libc'
+close(3)                                = 0
+close(3)                                = 0
+openat(AT_FDCWD, "source.txt", O_RDONLY) = 3
+openat(AT_FDCWD, "/nonexistent_dir/x.txt", O_WRONLY|O_CREAT|O_TRUNC, 0644) = -1 ENOENT (No such file or directory)
+open destination '/nonexistent_dir/x.txt': No such file or directory
+close(3)                                = 0
++++ exited with 1 +++
+--- strace
+
+$ strace -e trace=openat,read,write,close ./file_copy source.txt destination.txt 2>&1 | grep -v 'ld.so\|libc.so'
+close(3)                                = 0
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0\267\0\1\0\0\0000y\2\0\0\0\0\0"..., 832) = 832
+close(3)                                = 0
+openat(AT_FDCWD, "source.txt", O_RDONLY) = 3
+openat(AT_FDCWD, "destination.txt", O_WRONLY|O_CREAT|O_TRUNC, 0644) = 4
+read(3, "Operating Systems\nComputer Archi"..., 4096) = 40
+write(4, "Operating Systems\nComputer Archi"..., 40) = 40
+read(3, "", 4096)                       = 0
+close(3)                                = 0
+close(4)                                = 0
++++ exited with 0 +++

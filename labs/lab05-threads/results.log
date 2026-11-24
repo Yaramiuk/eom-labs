@@ -1,0 +1,410 @@
+CPUs: 10
+### 1
+
+$ ./first_thread
+Main: creating thread
+Hello from worker thread!
+Main: worker finished
+### 2
+
+$ ./multiple_threads
+Thread 1 is running
+Thread 2 is running
+Thread 3 is running
+Thread 4 is running
+All threads finished
+
+$ ./multiple_threads
+Thread 1 is running
+Thread 2 is running
+Thread 3 is running
+Thread 4 is running
+All threads finished
+
+$ ./multiple_threads
+Thread 1 is running
+Thread 2 is running
+Thread 3 is running
+Thread 4 is running
+All threads finished
+
+$ ./multiple_threads
+Thread 1 is running
+Thread 2 is running
+Thread 3 is running
+Thread 4 is running
+All threads finished
+
+$ ./multiple_threads
+Thread 1 is running
+Thread 2 is running
+Thread 3 is running
+Thread 4 is running
+All threads finished
+orderings over 500 runs:
+    382 1234
+     73 1324
+     22 1243
+      5 1423
+      5 1342
+      3 2143
+      2 2413
+      2 2134
+      1 3421
+      1 3241
+      1 2431
+      1 2341
+      1 2314
+      1 1432
+### 3
+
+$ ./shared_data
+Thread 1: value=100, address=0x420044
+Thread 2: value=200, address=0x420044
+Main: value=200, address=0x420044
+
+$ ./shared_data
+Thread 1: value=100, address=0x420044
+Thread 2: value=200, address=0x420044
+Main: value=200, address=0x420044
+
+$ ./shared_data
+Thread 1: value=100, address=0x420044
+Thread 2: value=200, address=0x420044
+Main: value=200, address=0x420044
+
+$ ./shared_data
+Thread 1: value=100, address=0x420044
+Thread 2: value=200, address=0x420044
+Main: value=200, address=0x420044
+
+$ ./shared_data
+Thread 1: value=100, address=0x420044
+Thread 2: value=200, address=0x420044
+Main: value=200, address=0x420044
+### 4
+
+$ ./thread_stacks
+Thread 1: local=10, address=0xffff84e3e938
+Thread 2: local=20, address=0xffff8462e938
+
+$ ./thread_stacks
+Thread 1: local=10, address=0xffffaf02e938
+Thread 2: local=20, address=0xffffae81e938
+
+$ ./thread_stacks
+Thread 1: local=10, address=0xffff91a2e938
+Thread 2: local=20, address=0xffff9121e938
+### 5 race
+
+$ ./race
+Expected: 2000000
+Actual:   1089057
+
+$ ./race
+Expected: 2000000
+Actual:   1034215
+
+$ ./race
+Expected: 2000000
+Actual:   1040225
+
+$ ./race
+Expected: 2000000
+Actual:   1069711
+
+$ ./race
+Expected: 2000000
+Actual:   1060035
+### 6 asm
+
+$ gcc -Wall -Wextra -pthread -O0 -S ../race.c -o race_arm64.s
+
+$ awk '/^increment:/,/ret/' race_arm64.s | grep -v cfi
+increment:
+.LFB6:
+	sub	sp, sp, #32
+	str	x0, [sp, 8]
+	str	xzr, [sp, 24]
+	b	.L2
+.L3:
+	adrp	x0, counter
+	add	x0, x0, :lo12:counter
+	ldr	x0, [x0]
+	add	x1, x0, 1
+	adrp	x0, counter
+	add	x0, x0, :lo12:counter
+	str	x1, [x0]
+	ldr	x0, [sp, 24]
+	add	x0, x0, 1
+	str	x0, [sp, 24]
+.L2:
+	ldr	x1, [sp, 24]
+	mov	x0, 16959
+	movk	x0, 0xf, lsl 16
+	cmp	x1, x0
+	ble	.L3
+	mov	x0, 0
+	add	sp, sp, 32
+	ret
+
+$ objdump -d race | awk '/<increment>:/,/^$/'
+0000000000400704 <increment>:
+  400704:	d10083ff 	sub	sp, sp, #0x20
+  400708:	f90007e0 	str	x0, [sp, #8]
+  40070c:	f9000fff 	str	xzr, [sp, #24]
+  400710:	1400000b 	b	40073c <increment+0x38>
+  400714:	90000100 	adrp	x0, 420000 <__libc_start_main@GLIBC_2.34>
+  400718:	91012000 	add	x0, x0, #0x48
+  40071c:	f9400000 	ldr	x0, [x0]
+  400720:	91000401 	add	x1, x0, #0x1
+  400724:	90000100 	adrp	x0, 420000 <__libc_start_main@GLIBC_2.34>
+  400728:	91012000 	add	x0, x0, #0x48
+  40072c:	f9000001 	str	x1, [x0]
+  400730:	f9400fe0 	ldr	x0, [sp, #24]
+  400734:	91000400 	add	x0, x0, #0x1
+  400738:	f9000fe0 	str	x0, [sp, #24]
+  40073c:	f9400fe1 	ldr	x1, [sp, #24]
+  400740:	d28847e0 	mov	x0, #0x423f                	// #16959
+  400744:	f2a001e0 	movk	x0, #0xf, lsl #16
+  400748:	eb00003f 	cmp	x1, x0
+  40074c:	54fffe4d 	b.le	400714 <increment+0x10>
+  400750:	d2800000 	mov	x0, #0x0                   	// #0
+  400754:	910083ff 	add	sp, sp, #0x20
+  400758:	d65f03c0 	ret
+
+### 8 mutex
+
+$ ./mutex_counter
+Expected: 2000000
+Actual:   2000000
+
+$ ./mutex_counter
+Expected: 2000000
+Actual:   2000000
+
+$ ./mutex_counter
+Expected: 2000000
+Actual:   2000000
+
+$ ./mutex_counter
+Expected: 2000000
+Actual:   2000000
+
+$ ./mutex_counter
+Expected: 2000000
+Actual:   2000000
+### 9 big lock
+
+$ ./mutex_big_lock
+Thread 1: acquired mutex, counter=0
+Thread 1: releasing mutex, counter=1000000
+Thread 2: acquired mutex, counter=1000000
+Thread 2: releasing mutex, counter=2000000
+Expected: 2000000
+Actual:   2000000
+### 10 time
+race: real 0.005  user 0.009  sys 0.000
+race: real 0.005  user 0.007  sys 0.001
+race: real 0.005  user 0.008  sys 0.001
+mutex_counter: real 0.057  user 0.074  sys 0.037
+mutex_counter: real 0.062  user 0.084  sys 0.040
+mutex_counter: real 0.056  user 0.081  sys 0.027
+mutex_big_lock: real 0.003  user 0.002  sys 0.000
+mutex_big_lock: real 0.004  user 0.002  sys 0.001
+mutex_big_lock: real 0.002  user 0.002  sys 0.000
+### 11 four
+
+$ ./race_four
+Expected: 2000000
+Actual:   632342
+
+$ ./race_four
+Expected: 2000000
+Actual:   560594
+
+$ ./race_four
+Expected: 2000000
+Actual:   604197
+
+$ ./race_four
+Expected: 2000000
+Actual:   578190
+
+$ ./race_four
+Expected: 2000000
+Actual:   572431
+
+$ ./mutex_four
+Expected: 2000000
+Actual:   2000000
+
+$ ./mutex_four
+Expected: 2000000
+Actual:   2000000
+
+$ ./mutex_four
+Expected: 2000000
+Actual:   2000000
+
+$ ./mutex_four
+Expected: 2000000
+Actual:   2000000
+
+$ ./mutex_four
+Expected: 2000000
+Actual:   2000000
+race: real 0.005  user 0.008  sys 0.001
+race: real 0.005  user 0.008  sys 0.001
+race: real 0.005  user 0.009  sys 0.000
+race_four: real 0.004  user 0.011  sys 0.000
+race_four: real 0.004  user 0.012  sys 0.000
+race_four: real 0.004  user 0.011  sys 0.001
+mutex_counter: real 0.054  user 0.063  sys 0.041
+mutex_counter: real 0.059  user 0.079  sys 0.036
+mutex_counter: real 0.055  user 0.074  sys 0.033
+mutex_four: real 0.116  user 0.183  sys 0.192
+mutex_four: real 0.113  user 0.149  sys 0.215
+mutex_four: real 0.114  user 0.197  sys 0.173
+### 12 heap
+
+$ ./shared_heap
+Worker: value=110 address=0x1de7f2a0
+Main: value=110 address=0x1de7f2a0
+### 13 result
+
+$ ./thread_result
+Result = 144
+### 15 deadlock
+
+$ timeout 5 ./deadlock; echo "exit code: $?"
+exit code: 124
+
+$ cat dl.log
+Thread 1: locking mutex1
+Thread 2: locking mutex2
+Thread 2: locking mutex1
+Thread 1: locking mutex2
+
+$ ls /proc/4314/task
+4314
+4316
+4317
+
+$ for t in /proc/4314/task/*; do echo $(basename $t) $(grep State $t/status) $(cat $t/wchan); done
+4314 State: S (sleeping) futex_do_wait
+4316 State: S (sleeping) futex_do_wait
+4317 State: S (sleeping) futex_do_wait
+
+$ ps -L -o pid,lwp,stat,wchan:20,cmd -p 4314
+    PID     LWP STAT WCHAN                CMD
+   4314    4314 Sl   futex_do_wait        ./deadlock
+   4314    4316 Sl   futex_do_wait        ./deadlock
+   4314    4317 Sl   futex_do_wait        ./deadlock
+### 16 fixed
+
+$ time timeout 5 ./deadlock_fixed; echo "exit code: $?"
+Thread 1: locking mutex1
+Thread 2: locking mutex1
+Thread 1: locking mutex2
+Thread 1: critical section
+Thread 2: locking mutex2
+Thread 2: critical section
+Both threads finished, no deadlock
+real 2.014  user 0.002  sys 0.005
+exit code: 0
+### final
+
+$ ./parallel_sum
+Thread 1: 1 ... 250000 -> 31250125000
+Thread 2: 250001 ... 500000 -> 93750125000
+Thread 3: 500001 ... 750000 -> 156250125000
+Thread 4: 750001 ... 1000000 -> 218750125000
+
+Parallel result: 500000500000
+Expected result: 500000500000
+
+Correct: YES
+
+$ ./parallel_sum 1000003
+Thread 1: 1 ... 250000 -> 31250125000
+Thread 2: 250001 ... 500000 -> 93750125000
+Thread 3: 500001 ... 750000 -> 156250125000
+Thread 4: 750001 ... 1000003 -> 218753125006
+
+Parallel result: 500003500006
+Expected result: 500003500006
+
+Correct: YES
+### extra timing
+sequential N=1000000: real 0.005  user 0.003  sys 0.001
+parallel   N=1000000: real 0.002  user 0.004  sys 0.000
+sequential N=1000000: real 0.007  user 0.005  sys 0.001
+parallel   N=1000000: real 0.002  user 0.001  sys 0.002
+sequential N=1000000: real 0.005  user 0.005  sys 0.000
+parallel   N=1000000: real 0.001  user 0.000  sys 0.002
+sequential N=1000000000: real 3.364  user 3.363  sys 0.000
+parallel   N=1000000000: real 0.340  user 1.345  sys 0.003
+sequential N=1000000000: real 3.324  user 3.322  sys 0.001
+parallel   N=1000000000: real 0.335  user 1.330  sys 0.002
+sequential N=1000000000: real 3.336  user 3.334  sys 0.001
+parallel   N=1000000000: real 0.331  user 1.315  sys 0.002
+
+$ ./sequential_sum 1000000000
+Sequential result: 500000000500000000
+Expected result:   500000000500000000
+Correct: YES
+
+$ ./parallel_sum 1000000000
+Thread 1: 1 ... 250000000 -> 31250000125000000
+Thread 2: 250000001 ... 500000000 -> 93750000125000000
+Thread 3: 500000001 ... 750000000 -> 156250000125000000
+Thread 4: 750000001 ... 1000000000 -> 218750000125000000
+
+Parallel result: 500000000500000000
+Expected result: 500000000500000000
+
+Correct: YES
+0000000000401146 <increment>:
+  401146:	55                   	push   rbp
+  401147:	48 89 e5             	mov    rbp,rsp
+  40114a:	48 89 7d e8          	mov    QWORD PTR [rbp-0x18],rdi
+  40114e:	48 c7 45 f8 00 00 00 	mov    QWORD PTR [rbp-0x8],0x0
+  401155:	00 
+  401156:	eb 17                	jmp    40116f <increment+0x29>
+  401158:	48 8b 05 d1 2e 00 00 	mov    rax,QWORD PTR [rip+0x2ed1]        # 404030 <counter>
+  40115f:	48 83 c0 01          	add    rax,0x1
+  401163:	48 89 05 c6 2e 00 00 	mov    QWORD PTR [rip+0x2ec6],rax        # 404030 <counter>
+  40116a:	48 83 45 f8 01       	add    QWORD PTR [rbp-0x8],0x1
+  40116f:	48 81 7d f8 3f 42 0f 	cmp    QWORD PTR [rbp-0x8],0xf423f
+  401176:	00 
+  401177:	7e df                	jle    401158 <increment+0x12>
+  401179:	b8 00 00 00 00       	mov    eax,0x0
+  40117e:	5d                   	pop    rbp
+  40117f:	c3                   	ret
+
+increment:
+.LFB6:
+	push	rbp
+	mov	rbp, rsp
+	mov	QWORD PTR [rbp-24], rdi
+	mov	QWORD PTR [rbp-8], 0
+	jmp	.L2
+.L3:
+	mov	rax, QWORD PTR counter[rip]
+	add	rax, 1
+	mov	QWORD PTR counter[rip], rax
+	add	QWORD PTR [rbp-8], 1
+.L2:
+	cmp	QWORD PTR [rbp-8], 999999
+	jle	.L3
+	mov	eax, 0
+	pop	rbp
+	ret
+### extra timing -O1 (чесне порівняння з однаковою якістю коду)
+sequential -O1 N=1e9: real 0.485  user 0.483  sys 0.001
+parallel   -O1 N=1e9: real 0.122  user 0.483  sys 0.001
+sequential -O1 N=1e9: real 0.484  user 0.483  sys 0.001
+parallel   -O1 N=1e9: real 0.122  user 0.484  sys 0.001
+sequential -O1 N=1e9: real 0.484  user 0.484  sys 0.000
+parallel   -O1 N=1e9: real 0.122  user 0.482  sys 0.002

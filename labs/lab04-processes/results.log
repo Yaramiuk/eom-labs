@@ -1,0 +1,469 @@
+### 1-2 process_info x3
+
+$ file process_info
+process_info: ELF 64-bit LSB executable, ARM aarch64, version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-aarch64.so.1, for GNU/Linux 3.7.0, not stripped
+
+$ ps -o pid,ppid,stat,cmd -p 96,97,98
+    PID    PPID STAT CMD
+     96       7 S    ./process_info
+     97       7 S    ./process_info
+     98       7 S    ./process_info
+
+$ ps -o pid,ppid,cmd -p 7
+    PID    PPID CMD
+      7       1 /bin/bash ./run.sh
+### 3 /proc
+
+$ ls /proc/96 | tr '\n' ' '
+attr autogroup auxv cgroup clear_refs cmdline comm coredump_filter cpuset cwd environ exe fd fdinfo gid_map io ksm_merging_pages ksm_stat limits loginuid map_files maps mem mountinfo mounts mountstats net ns oom_adj oom_score oom_score_adj pagemap personality projid_map root sched schedstat sessionid setgroups smaps smaps_rollup stack stat statm status syscall task timens_offsets timers timerslack_ns uid_map wchan 
+
+$ tr '\0' ' ' < /proc/96/cmdline; echo
+./process_info 
+
+$ grep -E '^(Name|State|Pid|PPid|Threads|VmRSS)' /proc/96/status
+Name:	process_info
+State:	S (sleeping)
+Pid:	96
+PPid:	7
+VmRSS:	    1300 kB
+Threads:	1
+
+$ readlink /proc/96/exe
+/lab/out/process_info
+
+$ head -n 20 /proc/96/maps
+00400000-00401000 r-xp 00000000 00:2c 105                                /lab/out/process_info
+0041f000-00420000 r--p 0000f000 00:2c 105                                /lab/out/process_info
+00420000-00421000 rw-p 00010000 00:2c 105                                /lab/out/process_info
+2fddc000-2fdfd000 rw-p 00000000 00:00 0                                  [heap]
+ffffbdb60000-ffffbdcec000 r-xp 00000000 00:35 268340                     /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffbdcec000-ffffbdcfc000 ---p 0018c000 00:35 268340                     /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffbdcfc000-ffffbdd00000 r--p 0018c000 00:35 268340                     /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffbdd00000-ffffbdd02000 rw-p 00190000 00:35 268340                     /usr/lib/aarch64-linux-gnu/libc.so.6
+ffffbdd02000-ffffbdd0f000 rw-p 00000000 00:00 0 
+ffffbdd10000-ffffbdd11000 r-xp 00000000 00:35 269343                     /usr/libexec/coreutils/libstdbuf.so
+ffffbdd11000-ffffbdd2f000 ---p 00001000 00:35 269343                     /usr/libexec/coreutils/libstdbuf.so
+ffffbdd2f000-ffffbdd30000 r--p 0000f000 00:35 269343                     /usr/libexec/coreutils/libstdbuf.so
+ffffbdd30000-ffffbdd31000 rw-p 00010000 00:35 269343                     /usr/libexec/coreutils/libstdbuf.so
+ffffbdd33000-ffffbdd5a000 r-xp 00000000 00:35 268322                     /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+ffffbdd60000-ffffbdd62000 rw-p 00000000 00:00 0 
+ffffbdd69000-ffffbdd6b000 rw-p 00000000 00:00 0 
+ffffbdd6b000-ffffbdd6f000 r--p 00000000 00:00 0                          [vvar]
+ffffbdd6f000-ffffbdd71000 r-xp 00000000 00:00 0                          [vdso]
+ffffbdd71000-ffffbdd73000 r--p 0002e000 00:35 268322                     /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+ffffbdd73000-ffffbdd75000 rw-p 00030000 00:35 268322                     /usr/lib/aarch64-linux-gnu/ld-linux-aarch64.so.1
+
+$ ls /proc/96 2>&1 | head -1
+ls: cannot access '/proc/96': No such file or directory
+
+$ cat pi_1.log pi_2.log pi_3.log
+PID:  96
+PPID: 7
+PID:  97
+PPID: 7
+PID:  98
+PPID: 7
+### 4 syscalls
+
+$ ./hello
+Hello from process!
+
+$ strace ./hello 2>&1 | head -40
+execve("./hello", ["./hello"], 0xffffd0a7f960 /* 10 vars */) = 0
+brk(NULL)                               = 0x2de0000
+mmap(NULL, 8192, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffffaf287000
+faccessat(AT_FDCWD, "/etc/ld.so.preload", R_OK) = -1 ENOENT (No such file or directory)
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+newfstatat(3, "", {st_mode=S_IFREG|0644, st_size=24995, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 24995, PROT_READ, MAP_PRIVATE, 3, 0) = 0xffffaf280000
+close(3)                                = 0
+openat(AT_FDCWD, "/lib/aarch64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1\3\0\0\0\0\0\0\0\0\3\0\267\0\1\0\0\0000y\2\0\0\0\0\0"..., 832) = 832
+newfstatat(3, "", {st_mode=S_IFREG|0755, st_size=1651408, ...}, AT_EMPTY_PATH) = 0
+mmap(NULL, 1826912, PROT_NONE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0xffffaf092000
+mmap(0xffffaf0a0000, 1761376, PROT_READ|PROT_EXEC, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0) = 0xffffaf0a0000
+munmap(0xffffaf092000, 57344)           = 0
+munmap(0xffffaf24f000, 4192)            = 0
+mprotect(0xffffaf22c000, 65536, PROT_NONE) = 0
+mmap(0xffffaf23c000, 24576, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_DENYWRITE, 3, 0x18c000) = 0xffffaf23c000
+mmap(0xffffaf242000, 49248, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_FIXED|MAP_ANONYMOUS, -1, 0) = 0xffffaf242000
+close(3)                                = 0
+set_tid_address(0xffffaf288050)         = 116
+set_robust_list(0xffffaf288060, 24)     = 0
+rseq(0xffffaf2886a0, 0x20, 0, 0xd428bc00) = 0
+mprotect(0xffffaf23c000, 16384, PROT_READ) = 0
+mprotect(0x41f000, 4096, PROT_READ)     = 0
+mprotect(0xffffaf28f000, 8192, PROT_READ) = 0
+prlimit64(0, RLIMIT_STACK, NULL, {rlim_cur=8192*1024, rlim_max=RLIM64_INFINITY}) = 0
+munmap(0xffffaf280000, 24995)           = 0
+newfstatat(1, "", {st_mode=S_IFIFO|0600, st_size=0, ...}, AT_EMPTY_PATH) = 0
+getrandom("\x2e\x4b\x3c\x52\xa3\xb8\xb8\x01", 8, GRND_NONBLOCK) = 8
+brk(NULL)                               = 0x2de0000
+brk(0x2e01000)                          = 0x2e01000
+write(1, "Hello from process!\n", 20Hello from process!
+)   = 20
+exit_group(0)                           = ?
++++ exited with 0 +++
+
+$ strace -c ./hello 2>&1 | tail -25
+Hello from process!
+% time     seconds  usecs/call     calls    errors syscall
+------ ----------- ----------- --------- --------- ----------------
+  0.00    0.000000           0         1         1 faccessat
+  0.00    0.000000           0         2           openat
+  0.00    0.000000           0         2           close
+  0.00    0.000000           0         1           read
+  0.00    0.000000           0         1           write
+  0.00    0.000000           0         3           newfstatat
+  0.00    0.000000           0         1           set_tid_address
+  0.00    0.000000           0         1           set_robust_list
+  0.00    0.000000           0         3           brk
+  0.00    0.000000           0         3           munmap
+  0.00    0.000000           0         1           execve
+  0.00    0.000000           0         6           mmap
+  0.00    0.000000           0         4           mprotect
+  0.00    0.000000           0         1           prlimit64
+  0.00    0.000000           0         1           getrandom
+  0.00    0.000000           0         1           rseq
+------ ----------- ----------- --------- --------- ----------------
+100.00    0.000000           0        32         1 total
+
+$ strace -e write ./hello
+write(1, "Hello from process!\n", 20Hello from process!
+)   = 20
++++ exited with 0 +++
+### 5 printf vs write
+
+$ strace -e write ./output
+write(1, "Output using write\n", 19Output using write
+)    = 19
+write(1, "Output using printf\n", 20Output using printf
+)   = 20
++++ exited with 0 +++
+
+$ strace -e write ./output > /dev/null
+write(1, "Output using write\n", 19)    = 19
+write(1, "Output using printf\n", 20)   = 20
++++ exited with 0 +++
+
+$ ./output | cat
+Output using write
+Output using printf
+
+$ script -qc "strace -e write ./output" /dev/null
+write(1, "Output using printf\n", 20Output using printf
+)   = 20
+write(1, "Output using write\n", 19Output using write
+)    = 19
++++ exited with 0 +++
+### 6 fork
+
+$ ./fork_basic
+Before fork: PID=142
+PARENT: PID=142, child PID=143, fork returned=143
+CHILD:  PID=143, PPID=142, fork returned=0
+
+$ ./fork_basic
+Before fork: PID=144
+PARENT: PID=144, child PID=145, fork returned=145
+CHILD:  PID=145, PPID=144, fork returned=0
+
+$ ./fork_basic
+Before fork: PID=146
+PARENT: PID=146, child PID=147, fork returned=147
+CHILD:  PID=147, PPID=146, fork returned=0
+
+$ ./fork_basic
+Before fork: PID=148
+PARENT: PID=148, child PID=149, fork returned=149
+CHILD:  PID=149, PPID=148, fork returned=0
+
+$ ./fork_basic
+Before fork: PID=150
+PARENT: PID=150, child PID=151, fork returned=151
+CHILD:  PID=151, PPID=150, fork returned=0
+order stats (200 runs, stdout=pipe):
+    200 PAREN
+8
+### 7 fork memory
+
+$ ./fork_memory
+Before fork: value=100, address=0x420050
+PARENT: PID=1359 value=300 address=0x420050
+CHILD:  PID=1360 value=200 address=0x420050
+### 8 strace fork
+
+$ strace -f -e trace=process ./fork_basic
+execve("./fork_basic", ["./fork_basic"], 0xfffff1b55db8 /* 10 vars */) = 0
+Before fork: PID=1364
+clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLDstrace: Process 1365 attached
+, child_tidptr=0xffff8c909050) = 1365
+PARENT: PID=1364, child PID=1365, fork returned=1365
+[pid  1364] exit_group(0)               = ?
+[pid  1364] +++ exited with 0 +++
+CHILD:  PID=1365, PPID=1, fork returned=0
+exit_group(0)                           = ?
++++ exited with 0 +++
+### 9 wait
+
+$ time ./wait_basic
+CHILD: working...
+CHILD: finished
+PARENT: waiting for child 1367
+PARENT: child finished
+PARENT: child exit status = 42
+
+real	0m2.003s
+user	0m0.001s
+sys	0m0.000s
+### 10 exec
+
+$ ./exec_basic
+Before exec: PID=1368
+Hello from exec!
+
+$ ./exec_pid
+Before exec: PID=1369
+New program PID=1369
+
+$ strace -e trace=execve ./exec_pid
+execve("./exec_pid", ["./exec_pid"], 0xffffcfde3f20 /* 10 vars */) = 0
+Before exec: PID=1373
+execve("./new_program", ["new_program"], 0xffffcd4c4ac8 /* 10 vars */) = 0
+New program PID=1373
++++ exited with 0 +++
+### 11 fork_exec
+
+$ ./fork_exec
+PARENT: PID=1374
+CHILD before exec: PID=1375
+Program started by child
+PARENT: created child PID=1375
+PARENT: child completed
+
+$ strace -f -e trace=process ./fork_exec
+execve("./fork_exec", ["./fork_exec"], 0xffffd4ada028 /* 10 vars */) = 0
+PARENT: PID=1379
+clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLDstrace: Process 1380 attached
+, child_tidptr=0xffffb07be050) = 1380
+[pid  1379] wait4(-1, CHILD before exec: PID=1380
+ <unfinished ...>
+[pid  1380] execve("/usr/local/sbin/echo", ["echo", "Program started by child"], 0xfffff4659e48 /* 10 vars */) = -1 ENOENT (No such file or directory)
+[pid  1380] execve("/usr/local/bin/echo", ["echo", "Program started by child"], 0xfffff4659e48 /* 10 vars */) = -1 ENOENT (No such file or directory)
+[pid  1380] execve("/usr/sbin/echo", ["echo", "Program started by child"], 0xfffff4659e48 /* 10 vars */) = -1 ENOENT (No such file or directory)
+[pid  1380] execve("/usr/bin/echo", ["echo", "Program started by child"], 0xfffff4659e48 /* 10 vars */) = 0
+Program started by child
+[pid  1380] exit_group(0)               = ?
+[pid  1380] +++ exited with 0 +++
+<... wait4 resumed>NULL, 0, NULL)       = 1380
+--- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1380, si_uid=0, si_status=0, si_utime=0, si_stime=0} ---
+PARENT: created child PID=1380
+PARENT: child completed
+exit_group(0)                           = ?
++++ exited with 0 +++
+### 12 launcher
+
+$ ./launcher date
+Tue Nov 24 09:52:54 UTC 2026
+Started child PID=1382
+Child exit status: 0
+
+$ ./launcher whoami
+root
+Started child PID=1384
+Child exit status: 0
+
+$ ./launcher uname
+Linux
+Started child PID=1386
+Child exit status: 0
+
+$ ./launcher nosuchprog
+execlp: No such file or directory
+Started child PID=1388
+Child exit status: 1
+
+$ ./launcher
+Usage: ./launcher <program>
+### 13 states
+
+$ cat st.log
+PID=1390
+
+$ grep State /proc/1390/status
+State:	S (sleeping)
+
+$ ps -o pid,ppid,state,time,cmd -p 1390
+    PID    PPID S     TIME CMD
+   1390       7 S 00:00:00 ./states
+
+$ cat /proc/1390/wchan; echo
+hrtimer_nanosleep
+
+$ awk '{print "utime="$14, "stime="$15}' /proc/1390/stat
+utime=0 stime=0
+### 14 zombie
+
+$ cat z.log
+CHILD: PID=1399, exiting now
+PARENT: PID=1397, child=1399
+PARENT: sleeping without wait()
+
+$ ps -o pid,ppid,state,cmd -p 1397,1399
+    PID    PPID S CMD
+   1397       7 S ./zombie
+   1399    1397 Z [zombie] <defunct>
+
+$ grep -E '^(Name|State|Pid|PPid)' /proc/1399/status
+Name:	zombie
+State:	Z (zombie)
+Pid:	1399
+PPid:	1397
+
+$ ps -o pid,state,cmd -p 1399 || echo 'child gone after parent exit'
+    PID S CMD
+child gone after parent exit
+
+$ cat zw.log
+PARENT: PID=1408, child=1410
+CHILD: PID=1410, exiting now
+PARENT: child status collected, sleeping
+
+$ ps -o pid,ppid,state,cmd -p 1408,1410
+    PID    PPID S CMD
+   1408       7 S ./zombie_wait
+### 15 forks
+
+$ ./fork_twice
+PID=1417
+PID=1416
+PID=1419
+PID=1418
+
+$ ./fork_twice | wc -l
+4
+
+$ ./fork_three | sort
+PID=1425 PPID=7
+PID=1427 PPID=1425
+PID=1428 PPID=1425
+PID=1429 PPID=1427
+PID=1430 PPID=1425
+PID=1431 PPID=1428
+PID=1432 PPID=1
+PID=1433 PPID=1
+
+$ ./fork_three | wc -l
+8
+### final
+
+$ ./process_runner date
+Parent PID: 1443
+Creating child...
+Parent: created child 1444
+
+Child PID: 1444
+Child PPID: 1443
+Executing: date
+
+Tue Nov 24 09:52:58 UTC 2026
+
+Child 1444 completed
+Exit status: 0
+
+Parent continues
+
+$ ./process_runner ls -l /lab/process_runner.c
+Parent PID: 1445
+Creating child...
+Parent: created child 1446
+
+Child PID: 1446
+Child PPID: 1445
+Executing: ls
+
+-rw-r--r-- 1 root root 2036 Nov 24 09:51 /lab/process_runner.c
+
+Child 1446 completed
+Exit status: 0
+
+Parent continues
+
+$ ./process_runner false
+Parent PID: 1447
+Creating child...
+Parent: created child 1448
+
+Child PID: 1448
+Child PPID: 1447
+Executing: false
+
+
+Child 1448 completed
+Exit status: 1
+
+Parent continues
+
+$ ./process_runner nosuchprog
+Parent PID: 1449
+Creating child...
+Parent: created child 1450
+
+Child PID: 1450
+Child PPID: 1449
+Executing: nosuchprog
+
+exec nosuchprog: No such file or directory
+
+Child 1450 completed
+Exit status: 127
+
+Parent continues
+
+$ ./process_runner sh -c 'kill -TERM $$'
+Parent PID: 1451
+Creating child...
+Parent: created child 1452
+
+Child PID: 1452
+Child PPID: 1451
+Executing: sh
+
+
+Child 1452 completed
+Terminated by signal 15 (Terminated)
+
+Parent continues
+
+$ ./process_runner
+Usage: ./process_runner PROGRAM [ARGS...]
+
+$ strace -f -e trace=process ./process_runner date
+execve("./process_runner", ["./process_runner", "date"], 0xffffebcf59e0 /* 10 vars */) = 0
+Parent PID: 1457
+Creating child...
+clone(child_stack=NULL, flags=CLONE_CHILD_CLEARTID|CLONE_CHILD_SETTID|SIGCHLDstrace: Process 1458 attached
+, child_tidptr=0xffffa11ef050) = 1458
+Parent: created child 1458
+[pid  1457] wait4(1458, 
+Child PID: 1458
+Child PPID: 1457
+Executing: date
+
+ <unfinished ...>
+[pid  1458] execve("/usr/local/sbin/date", ["date"], 0xffffff43b9f0 /* 10 vars */) = -1 ENOENT (No such file or directory)
+[pid  1458] execve("/usr/local/bin/date", ["date"], 0xffffff43b9f0 /* 10 vars */) = -1 ENOENT (No such file or directory)
+[pid  1458] execve("/usr/sbin/date", ["date"], 0xffffff43b9f0 /* 10 vars */) = -1 ENOENT (No such file or directory)
+[pid  1458] execve("/usr/bin/date", ["date"], 0xffffff43b9f0 /* 10 vars */) = 0
+Tue Nov 24 09:52:58 UTC 2026
+[pid  1458] exit_group(0)               = ?
+[pid  1458] +++ exited with 0 +++
+<... wait4 resumed>[{WIFEXITED(s) && WEXITSTATUS(s) == 0}], 0, NULL) = 1458
+--- SIGCHLD {si_signo=SIGCHLD, si_code=CLD_EXITED, si_pid=1458, si_uid=0, si_status=0, si_utime=0, si_stime=0} ---
+
+Child 1458 completed
+Exit status: 0
+
+Parent continues
+exit_group(0)                           = ?
++++ exited with 0 +++
